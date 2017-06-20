@@ -5,19 +5,26 @@ type Picture {
 }
 
 interface Identifiable {
-    id: String!
+    id: Int!
 }
 
 type Product implements Identifiable {
-    id: String!
+    id: Int!
     name: String!
     description: String
     price: Float!
     picture(size: Int!): Picture
 }
 
+type Category implements Identifiable {
+    id: Int!
+    name: String!
+}
+
 type Query {
     product(id: Int!): Product
     products: [Product]
+    category(id: Int!): Category
+    categories: [Category]
 }
 

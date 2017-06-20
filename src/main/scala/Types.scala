@@ -1,4 +1,4 @@
-import sangria.schema.{Argument, Field, InterfaceType, ListType, ObjectType, OptionType, Schema, StringType, fields}
+import sangria.schema.{Argument, Field, InterfaceType, ListType, ObjectType, OptionType, Schema, StringType, IntType, fields}
 
 object Types {
 
@@ -9,7 +9,7 @@ object Types {
     "Identifiable",
     "Entity that can be identified",
     fields[Unit, Identifiable](
-      Field("id", StringType, resolve = _.value.id)
+      Field("id", IntType, resolve = _.value.id)
     )
   )
 
@@ -30,7 +30,7 @@ object Types {
       ObjectTypeDescription("The category of products")
     )
 
-  val Id = Argument("id", StringType)
+  val Id = Argument("id", IntType)
 
   val QueryType = ObjectType(
     "Query",

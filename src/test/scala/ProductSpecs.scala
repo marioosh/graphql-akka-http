@@ -21,7 +21,7 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
         graphql"""
 
           query MyProduct {
-            product(id: "2") {
+            product(id: 2) {
                   name
                   description
 
