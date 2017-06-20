@@ -1,19 +1,4 @@
-import sangria.schema._
-
-object Models {
-
-  case class Picture(width: Int, height: Int, url: Option[String])
-
-  trait Identifiable {
-    def id: String
-  }
-
-  case class Product(id: String, name: String, description: String, price: BigDecimal) extends Identifiable {
-    def picture(size: Int): Picture =
-      Picture(width = size, height = size, url = Some(s"http://fakeimg.pl/$size/?text=ID:%20$id"))
-  }
-
-}
+import sangria.schema.{Argument, Field, InterfaceType, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
 object Types {
 
@@ -40,6 +25,11 @@ object Types {
       DocumentField("url", "Picture CDN URL")
     )
 
+  implicit val CategoryType: ObjectType[Unit, Category] =
+    deriveObjectType[Unit, Category](
+      ObjectTypeDescription("The category of products")
+    )
+
   val Id = Argument("id", StringType)
 
   val QueryType = ObjectType(
@@ -52,11 +42,17 @@ object Types {
       Field("products", ListType(ProductType),
         description = Some("Returns a list of all available products."),
         resolve = _.ctx.products
+      ),
+      Field("category", OptionType(CategoryType),
+        description = Some("Returns a category with specific `id`."),
+        arguments = Id :: Nil,
+        resolve = c => c.ctx.category(c arg Id)),
+      Field("categories", ListType(CategoryType),
+        description = Some("Returns a list of all available categories."),
+        resolve = _.ctx.categories
       )
     )
   )
 
   val ShopSchema = Schema(QueryType) //define entry point
 }
-
-

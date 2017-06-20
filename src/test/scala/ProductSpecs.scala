@@ -33,6 +33,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
             products {
               name
             }
+
+            categories {
+              name
+            }
           }
 
       """
@@ -53,6 +57,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
           |    "products":[
           |     {"name":"Cheescake"},
           |     {"name":"Health Potion"}
+          |    ],
+          |    "categories":[
+          |     {"name":"Food"},
+          |     {"name":"Ingredients"}
           |    ]
           |  }
           |}
