@@ -10,8 +10,9 @@ interface Identifiable {
 
 type Product implements Identifiable {
     id: String!
-    name: String
+    name: String!
     description: String
+    price: Float!
     picture(size: Int!): Picture
 }
 
