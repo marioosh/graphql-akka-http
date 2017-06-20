@@ -1,10 +1,20 @@
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import akka.event.Logging
-import Console._
+import akka.http.scaladsl.server._
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.model.StatusCodes._
+import sangria.ast.Document
+import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
+import sangria.parser.QueryParser
+import spray.json._
+import sangria.marshalling.sprayJson._
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 
+import Console._
 import scala.concurrent.Await
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 
 object Server extends App {
@@ -22,16 +32,31 @@ object Server extends App {
 
   logger("Starting GRAPHQL server...")
 
-
   //shutdown Hook
   scala.sys.addShutdownHook(() -> shutdown())
+
+  val route: Route =
+    (post & path("graphql")){
+      entity(as[JsValue]){ requestJson =>
+        GraphQLServer.endpoint(requestJson)
+      }
+    } ~ {
+      getFromResource("graphiql.html")
+    }
+
+
+
+
+  Http().bindAndHandle(route, "0.0.0.0", PORT)
+  logger(s"open a browser with URL: http://localhost:$PORT")
+  logger(s"or POST queries to http://localhost:$PORT/graphql")
 
   def shutdown(): Unit = {
 
     logger("Terminating...", YELLOW)
     actorSystem.terminate()
     Await.result(actorSystem.whenTerminated, 30 seconds)
-    logger("Terminated... Bye", RED)
+    logger("Terminated... Bye", YELLOW)
   }
 
   def logger(message: String, color: String = GREEN): Unit = {

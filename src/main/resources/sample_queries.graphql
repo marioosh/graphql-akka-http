@@ -1,0 +1,26 @@
+query AllCategories {
+    categories {
+        id
+        name
+    }
+}
+
+query CategoryById($id: Int!){
+    category(id: $id){
+        id
+        name
+    }
+}
+
+query GetAll {
+    products {
+        name
+        picture(size: 200){
+            url
+        }
+    }
+
+    categories {
+        name
+    }
+}

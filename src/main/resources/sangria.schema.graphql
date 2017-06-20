@@ -27,4 +27,3 @@ type Query {
     category(id: Int!): Category
     categories: [Category]
 }
-
