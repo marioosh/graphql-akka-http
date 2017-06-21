@@ -83,8 +83,8 @@ object ShopRepository {
     ),
     Categories ++= Seq(
       Category(1, "Food"),
-      Category(2, "Ingredients"),
-      Category(3, "Home decoration")
+      Category(2, "Magic ingredients"),
+      Category(3, "Home interior")
     ),
     Taxonometry ++= Seq(
       Taxonomy(1,1),

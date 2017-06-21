@@ -1,6 +1,6 @@
-import sangria.schema.{Argument, Field, InterfaceType, ListType, ObjectType, OptionType, Schema, StringType, IntType, fields}
+import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
-object Types {
+object SchemaDef {
 
   import Models._
   import sangria.macros.derive._
@@ -31,6 +31,7 @@ object Types {
     )
 
   val Id = Argument("id", IntType)
+  val Ids = Argument("ids", ListInputType(IntType))
 
   val QueryType = ObjectType(
     "Query",
@@ -39,17 +40,22 @@ object Types {
         description = Some("Returns a product with specific `id`."),
         arguments = Id :: Nil,
         resolve = c => c.ctx.product(c arg Id)),
-      Field("products", ListType(ProductType),
+      Field("allProducts", ListType(ProductType),
         description = Some("Returns a list of all available products."),
-        resolve = _.ctx.products
+        resolve = _.ctx.allProducts
+      ),
+      Field("products", ListType(ProductType),
+        description = Some("Returns a list of products for provided IDs."),
+        arguments = Ids :: Nil,
+        resolve = c => c.ctx.products(c.arg[List[Int]]("ids"))
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
         arguments = Id :: Nil,
         resolve = c => c.ctx.category(c arg Id)),
-      Field("categories", ListType(CategoryType),
+      Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),
-        resolve = _.ctx.categories
+        resolve = _.ctx.allCategories
       )
     )
   )

@@ -41,7 +41,7 @@ object GraphQLServer {
 
   private def executeGraphQLQuery(query: Document, op: Option[String], vars: JsObject)(implicit e: ExecutionContext) = {
     Executor.execute(
-      Types.ShopSchema,
+      SchemaDef.ShopSchema,
       query,
       repository,
       variables = vars,

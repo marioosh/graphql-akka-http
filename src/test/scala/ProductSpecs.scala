@@ -4,7 +4,7 @@ import sangria.macros._
 import sangria.execution.Executor
 import sangria.marshalling.sprayJson._
 import spray.json._
-import Types._
+import SchemaDef._
 
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
@@ -30,11 +30,11 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
                   }
             }
 
-            products {
+            products(ids: [1,2]) {
               name
             }
 
-            categories {
+            allCategories {
               name
             }
           }
@@ -58,9 +58,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
           |     {"name":"Cheescake"},
           |     {"name":"Health Potion"}
           |    ],
-          |    "categories":[
+          |    "allCategories":[
           |     {"name":"Food"},
-          |     {"name":"Ingredients"}
+          |     {"name":"Magic ingredients"},
+          |     {"name":"Home interior"}
           |    ]
           |  }
           |}
