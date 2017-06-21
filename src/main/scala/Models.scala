@@ -13,4 +13,6 @@ object Models {
 
   case class Category(id: Int, name: String) extends Identifiable
 
+  case class Taxonomy(productId: Int, categoryId: Int)
+
 }
