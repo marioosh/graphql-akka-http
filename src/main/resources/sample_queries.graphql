@@ -24,3 +24,12 @@ query GetAll {
         name
     }
 }
+
+query AllProductsWithImage($size: Int!) {
+    products {
+        name
+        picture(size: $size) {
+            url
+        }
+    }
+}

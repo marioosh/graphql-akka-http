@@ -13,6 +13,8 @@ import scala.util.{Failure, Success}
 
 object GraphQLServer {
 
+  val repository = ShopRepository.createDatabase()
+
   def endpoint(requestJSON: JsValue)(implicit e: ExecutionContext): Route = {
 
     val JsObject(fields) = requestJSON
@@ -37,12 +39,11 @@ object GraphQLServer {
     }
   }
 
-
   private def executeGraphQLQuery(query: Document, op: Option[String], vars: JsObject)(implicit e: ExecutionContext) = {
     Executor.execute(
       Types.ShopSchema,
       query,
-      new ShopRepository,
+      repository,
       variables = vars,
       operationName = op)
       .map(OK -> _)

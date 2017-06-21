@@ -66,7 +66,9 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
           |}
         """.stripMargin.parseJson
 
-      Executor.execute(ShopSchema, query, new ShopRepository) map {
+
+
+      Executor.execute(ShopSchema, query, ShopRepository.createDatabase()) map {
         result => assert(result == response)
       }
 
