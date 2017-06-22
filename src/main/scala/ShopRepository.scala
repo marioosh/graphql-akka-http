@@ -21,7 +21,6 @@ class ShopRepository(db: Database) {
 
   def category(id: String): Future[Option[Category]] = db.run(Categories.filter(_.id === id).result.headOption)
 
-  def close() = db.close()
 }
 
 object ShopRepository {

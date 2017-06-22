@@ -37,15 +37,14 @@ object SchemaDef {
   val QueryType = ObjectType(
     "Query",
     fields[ShopRepository, Unit](
-      Field("product", OptionType(ProductType),
-        description = Some("Returns a product with specific `id`."),
-        arguments = Argument("id", IntType) :: Nil,
-        resolve = c => c.ctx.product(c.arg[Int]("id"))),
-
       Field("allProducts", ListType(ProductType),
         description = Some("Returns a list of all available products."),
         resolve = _.ctx.allProducts
       ),
+      Field("product", OptionType(ProductType),
+        description = Some("Returns a product with specific `id`."),
+        arguments = Argument("id", IntType) :: Nil,
+        resolve = c => c.ctx.product(c.arg[Int]("id"))),
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
