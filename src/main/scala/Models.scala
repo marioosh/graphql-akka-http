@@ -11,8 +11,8 @@ object Models {
       Picture(width = size, height = size, url = Some(s"http://fakeimg.pl/$size/?text=ID:%20$id"))
   }
 
-  case class Category(id: Int, name: String) extends Identifiable
+  case class Category(id: String, name: String)
 
-  case class Taxonomy(productId: Int, categoryId: Int)
+  case class Taxonomy(productId: Int, categoryId: String)
 
 }

@@ -1,5 +1,5 @@
 import sangria.execution.deferred._
-import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, fields}
+import sangria.schema._
 
 object SchemaDef {
 
@@ -36,21 +36,17 @@ object SchemaDef {
     )
 
   implicit val productHasId = HasId[Product, Int](_.id)
-  implicit val categoryHasId = HasId[Category, Int](_.id)
+  implicit val categoryHasId = HasId[Category, String](_.id)
 
 
   //  val prodComplexCat = Relation[Product, (Seq[Int], Product), Int]("product-category-complex", _._1, _._2)
   //  val prodComplexCat = Relation[Product(result), (Seq[Int], Product)[tmp], Int[productId])]
 
-  val Id = Argument("id", IntType)
-  val Ids = Argument("ids", ListInputType(IntType))
-
-
   val productsFetcher = Fetcher(
     (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids)
   )
   val categoriesFetcher = Fetcher(
-    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids)
+    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids)
   )
 
   lazy val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
@@ -60,7 +56,7 @@ object SchemaDef {
     fields[ShopRepository, Unit](
       Field("product", OptionType(ProductType),
         description = Some("Returns a product with specific `id`."),
-        arguments = Id :: Nil,
+        arguments = Argument("id", IntType) :: Nil,
         resolve = c => productsFetcher.defer(c.arg[Int]("id"))),
 
       Field("allProducts", ListType(ProductType),
@@ -69,17 +65,17 @@ object SchemaDef {
       ),
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
-        arguments = Ids :: Nil,
+        arguments = Argument("ids", ListInputType(IntType)) :: Nil,
         resolve = c => productsFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
-        arguments = Id :: Nil,
-        resolve = c => categoriesFetcher.deferOpt(c.arg[Int]("id"))),
+        arguments = Argument("id", StringType) :: Nil,
+        resolve = c => categoriesFetcher.deferOpt(c.arg[String]("id"))),
       Field("categories", ListType(CategoryType),
         description = Some("Returns categories by provided ids"),
-        arguments = Ids :: Nil,
-        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+        arguments = Argument("ids", ListInputType(StringType)) :: Nil,
+        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[String]]("ids"))
       ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),

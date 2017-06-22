@@ -1,10 +1,9 @@
-import org.scalatest.{Matchers, AsyncWordSpec}
-
-import sangria.macros._
+import SchemaDef._
+import org.scalatest.{AsyncWordSpec, Matchers}
 import sangria.execution.Executor
+import sangria.macros._
 import sangria.marshalling.sprayJson._
 import spray.json._
-import SchemaDef._
 
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
@@ -88,7 +87,7 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
 
     "returns products for provided category ids" in {
 
-      repository.findProductsForCategories(Seq(2)) map {
+      repository.findProductsForCategories(Seq("2")) map {
         products =>
           //          println(categories)
           assert(products.length == 4)
