@@ -1,11 +1,10 @@
 import Models.{Category, Product, Taxonomy}
-
-import language.postfixOps
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 
 class ShopRepository(db: Database) {
 
@@ -34,6 +33,18 @@ class ShopRepository(db: Database) {
         .join(Products).on(_.productId === _.id)
         .result)
       .map(_.map(_._2).distinct)
+
+  def productsByCategory(categoriesIds: Seq[Int]): Future[Seq[(Seq[Int], Product)]] =
+    db.run(
+      Taxonometry
+        .filter(_.categoryId inSet categoriesIds)
+        .join(Products).on(_.productId === _.id)
+        .result)
+      .map{ result =>
+        result.groupBy(_._2.id).toVector.map {
+          case (_, products) ⇒ products.map(_._1.productId) → products.head._2
+        }
+      }
 
   def close() = db.close()
 }

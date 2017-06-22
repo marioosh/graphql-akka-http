@@ -1,5 +1,7 @@
 import sangria.execution.deferred._
-import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, StringType, fields}
+import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, fields}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object SchemaDef {
 
@@ -25,14 +27,7 @@ object SchemaDef {
   implicit val ProductType: ObjectType[Unit, Product] =
     deriveObjectType[Unit, Product](
       Interfaces(IdentifiableType),
-      IncludeMethods("picture"), //by defaul macro cosinders fields only
-//      AddFields(
-//        Field("categories",
-//          ListType(CategoryType),
-//          description = Some("Categories assigned to the prodct"),
-//          resolve = c => categoriesFetcher.deferRelSeq(pcRelation, c.value.id)
-//        )
-//      )
+      IncludeMethods("picture") //by defaul macro cosinders fields only
     )
 
   /**
@@ -50,14 +45,28 @@ object SchemaDef {
 
   implicit val CategoryType: ObjectType[Unit, Category] =
     deriveObjectType[Unit, Category](
-      ObjectTypeDescription("The category of products")
-    )
+      ObjectTypeDescription("The category of products"),
+      AddFields(
+        Field("products", ListType(ProductType),
+          resolve = c => complexProdFetcher.deferRelSeq(prodComplexCat, c.value.id))
+        )
+      )
+
+  implicit val productHasId = HasId[Product, Int](_.id)
+  implicit val categoryHasId = HasId[Category, Int](_.id)
+
+
+  val prodComplexCat = Relation[Product, (Seq[Int], Product), Int]("product-category-complex", _._1, _._2)
+//  val prodComplexCat = Relation[Product(result), (Seq[Int], Product)[tmp], Int[productId])]
+
+  val complexProdFetcher = Fetcher.relCaching[ShopRepository, Product, (Seq[Int], Product), Int](
+    (repo, ids) ⇒ repo.products(ids),
+    (repo, ids) ⇒ repo.findProductsForCategories(ids(prodComplexCat)).map(_.map(p => Seq(p.id) -> p))/**/ )
+  //.map(_.map(p ⇒ p.inCategories → p))
 
   val Id = Argument("id", IntType)
   val Ids = Argument("ids", ListInputType(IntType))
 
-  implicit val productHasId = HasId[Product, Int](_.id)
-  implicit val categoryHasId = HasId[Category, Int](_.id)
 
   val productsFetcher = Fetcher(
     (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids)
@@ -66,14 +75,7 @@ object SchemaDef {
     (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids)
   )
 
-//  val pcRelation = Relation[Product, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
-//
-//  val categoriesFetcher = Fetcher.relCaching(
-//    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
-//    (repo: ShopRepository, ids: RelationIds[Product]) => repo.findProductsCategories(ids(pcRelation))
-//  )
-
-  lazy val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
+  lazy val deferredResolver = DeferredResolver.fetchers(complexProdFetcher, categoriesFetcher)
 
   val QueryType = ObjectType(
     "Query",
