@@ -1,0 +1,17 @@
+query stage4{
+
+    allCategories { # 250
+        name
+        products { #30
+            name
+            description
+            picture(size: 100){
+                url
+            }
+            categories { #30
+                name
+            }
+        }
+    }
+
+}
