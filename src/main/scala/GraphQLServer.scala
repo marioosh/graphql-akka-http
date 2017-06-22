@@ -1,13 +1,12 @@
-import spray.json.{JsObject, JsString, JsValue}
-import akka.http.scaladsl.server._
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.model.StatusCodes._
-import sangria.ast.Document
-import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
-import sangria.parser.QueryParser
-import sangria.marshalling.sprayJson._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import sangria.execution.deferred.DeferredResolver
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server._
+import sangria.ast.Document
+import sangria.execution._
+import sangria.marshalling.sprayJson._
+import sangria.parser.QueryParser
+import spray.json.{JsObject, JsString, JsValue}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -15,6 +14,15 @@ import scala.util.{Failure, Success}
 object GraphQLServer {
 
   val repository = ShopRepository.createDatabase()
+
+  case object TooComplexQuery extends Exception
+
+  val rejectComplexQueries = QueryReducer.rejectComplexQueries(300, (_: Double, _:ShopRepository) => TooComplexQuery)
+
+  val exceptionHandler: Executor.ExceptionHandler = {
+    case (_, TooComplexQuery) => HandledException("Too complex query. Please reduce the field selection")
+  }
+
 
   def endpoint(requestJSON: JsValue)(implicit e: ExecutionContext): Route = {
 
@@ -47,7 +55,9 @@ object GraphQLServer {
       repository,
       variables = vars,
       operationName = op,
-      deferredResolver = SchemaDef.deferredResolver)
+      deferredResolver = SchemaDef.deferredResolver,
+      exceptionHandler = exceptionHandler,
+      queryReducers = rejectComplexQueries :: Nil)
         .map(OK -> _)
         .recover {
           case error: QueryAnalysisError => BadRequest -> error.resolveError

@@ -6,6 +6,9 @@ object SchemaDef {
   import Models._
   import sangria.macros.derive._
 
+  def constantComplexity[Ctx](complexity: Double) =
+    Some((_: Ctx, _: Args, child: Double) ⇒ child + complexity)
+
   val IdentifiableType = InterfaceType(
     "Identifiable",
     "Entity that can be identified",
@@ -20,6 +23,7 @@ object SchemaDef {
       IncludeMethods("picture"), //by defaul macro cosinders fields only
       AddFields(
         Field("categories", ListType(CategoryType),
+          complexity = constantComplexity(30),
           resolve = c => categoriesFetcher.deferRelSeq(category, c.value.id))
       )
     )
@@ -39,6 +43,7 @@ object SchemaDef {
       ObjectTypeDescription("The category of products"),
       AddFields(
         Field("products", ListType(ProductType),
+          complexity = constantComplexity(30),
           resolve = c => productsFetcher.deferRelSeq(product, c.value.id))
       )
     )
@@ -67,6 +72,7 @@ object SchemaDef {
 
       Field("allProducts", ListType(ProductType),
         description = Some("Returns a list of all available products."),
+        complexity = constantComplexity(100),
         resolve = _.ctx.allProducts
       ),
       Field("products", ListType(ProductType),
@@ -80,11 +86,13 @@ object SchemaDef {
         resolve = c => categoriesFetcher.deferOpt(c.arg[String]("id"))),
       Field("categories", ListType(CategoryType),
         description = Some("Returns categories by provided ids"),
+        complexity = constantComplexity(30),
         arguments = Argument("ids", ListInputType(StringType)) :: Nil,
         resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[String]]("ids"))
       ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),
+        complexity = constantComplexity(250),
         resolve = _.ctx.allCategories
       )
     )
