@@ -1,6 +1,7 @@
 import Models.{Category, Product, Taxonomy}
 import slick.jdbc.H2Profile.api._
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
@@ -17,6 +18,29 @@ class ShopRepository(db: Database) {
 
   def categories(ids: Seq[String]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
+  def productsByCategories(categoriesIds: Seq[String]): Future[Seq[(Seq[String], Product)]] =
+    db.run(
+      Taxonometry
+        .filter(_.categoryId inSet categoriesIds)
+        .join(Products).on(_.productId === _.id)
+        .result)
+      .map { result =>
+        result.groupBy(_._2.id).toVector.map {
+          case (_, products) ⇒ products.map(_._1.categoryId) → products.head._2
+        }
+      }
+
+  def categoriesByProducts(productsIds: Seq[Int]): Future[Seq[(Seq[Int], Category)]] =
+    db.run(
+      Taxonometry
+        .filter(_.productId inSet productsIds)
+        .join(Categories).on(_.categoryId === _.id)
+        .result)
+      .map { result =>
+        result.groupBy(_._2.id).toVector.map {
+          case (_, categories) ⇒ categories.map(_._1.productId) → categories.head._2
+        }
+      }
 }
 
 object ShopRepository {
