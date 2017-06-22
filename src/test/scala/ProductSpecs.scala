@@ -8,6 +8,8 @@ import SchemaDef._
 
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
+  val repository = ShopRepository.createDatabase()
+
   "A Math" should {
     "still works" in {
       (1 + 1) shouldEqual 2
@@ -68,13 +70,22 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
         """.stripMargin.parseJson
 
 
-
-      Executor.execute(ShopSchema, query, ShopRepository.createDatabase()) map {
+      Executor.execute(ShopSchema, query, repository) map {
         result => assert(result == response)
       }
 
     }
+
+    "returns categories for provided products ids" in {
+
+      repository.findProductsCategories(Seq(6)) map {
+        categories =>
+          println(categories)
+          assert(categories.length == 2)
+      }
+    }
   }
+
 
 }
 

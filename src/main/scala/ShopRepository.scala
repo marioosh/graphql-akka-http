@@ -23,6 +23,14 @@ class ShopRepository(db: Database) {
 
   def categories(ids: Seq[Int]) = db.run(Categories.filter(_.id inSet ids).result)
 
+  def findProductsCategories(productsIds: Seq[Int]) =
+    db.run(productsCategoriesQuery(productsIds).result)
+        .map(result =>
+          result.groupBy(_._2.id).toVector.map {
+            case (_, categories) => categories.map(_._1.productId) -> categories.head._2
+          }
+        )
+
   def close() = db.close()
 }
 
@@ -106,5 +114,9 @@ object ShopRepository {
 
     new ShopRepository(db)
   }
+
+  private def productsCategoriesQuery(productsIds: Seq[Int]) =
+    Taxonometry.filter(_.productId inSet productsIds)
+        .join(Categories).on(_.categoryId === _.id)
 
 }

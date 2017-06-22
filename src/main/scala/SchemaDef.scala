@@ -1,3 +1,4 @@
+import sangria.execution.deferred.{Fetcher, HasId, Relation, RelationIds}
 import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
 object SchemaDef {
@@ -13,17 +14,42 @@ object SchemaDef {
     )
   )
 
+  /**
+    * PRODUCT
+    */
+
+  val pcRelation = Relation[Category, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
+
+  val productCategoriesFetcher = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
+    (repo: ShopRepository, ids: RelationIds[Category]) => repo.findProductsCategories(ids(pcRelation))
+  )(HasId(_.id))
+
   implicit val ProductType: ObjectType[Unit, Product] =
     deriveObjectType[Unit, Product](
       Interfaces(IdentifiableType),
-      IncludeMethods("picture") //by defaul macro cosinders fields only
+      IncludeMethods("picture"), //by defaul macro cosinders fields only
+      AddFields(
+        Field("categories",
+          ListType(CategoryType),
+          description = Some("Categories assigned to the prodct"),
+          resolve = c => productCategoriesFetcher.deferRelSeq(pcRelation, c.value.id)
+        )
+      )
     )
 
+  /**
+    * PICTURE
+    */
   implicit val PictureType: ObjectType[Unit, Picture] =
     deriveObjectType[Unit, Picture](
       ObjectTypeDescription("The product picture"),
       DocumentField("url", "Picture CDN URL")
     )
+
+  /**
+    * Category
+    */
 
   implicit val CategoryType: ObjectType[Unit, Category] =
     deriveObjectType[Unit, Category](
