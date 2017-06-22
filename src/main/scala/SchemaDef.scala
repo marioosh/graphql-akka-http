@@ -19,23 +19,18 @@ object SchemaDef {
     */
 
 //  val pcRelation = Relation[Category, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
+
 //
-//  val productCategoriesFetcher = Fetcher.relCaching(
-//    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
-//    (repo: ShopRepository, ids: RelationIds[Category]) => repo.findProductsCategories(ids(pcRelation))
-//  )(HasId(_.id))
-
-
 
   implicit val ProductType: ObjectType[Unit, Product] =
     deriveObjectType[Unit, Product](
       Interfaces(IdentifiableType),
-      IncludeMethods("picture") //by defaul macro cosinders fields only
+      IncludeMethods("picture"), //by defaul macro cosinders fields only
 //      AddFields(
 //        Field("categories",
 //          ListType(CategoryType),
 //          description = Some("Categories assigned to the prodct"),
-//          resolve = c => productCategoriesFetcher.deferRelSeq(pcRelation, c.value.id)
+//          resolve = c => categoriesFetcher.deferRelSeq(pcRelation, c.value.id)
 //        )
 //      )
     )
@@ -71,7 +66,14 @@ object SchemaDef {
     (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids)
   )
 
-  val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
+//  val pcRelation = Relation[Product, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
+//
+//  val categoriesFetcher = Fetcher.relCaching(
+//    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
+//    (repo: ShopRepository, ids: RelationIds[Product]) => repo.findProductsCategories(ids(pcRelation))
+//  )
+
+  lazy val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
 
   val QueryType = ObjectType(
     "Query",

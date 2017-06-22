@@ -79,12 +79,22 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
 
     "returns categories for provided products ids" in {
 
-      repository.findProductsCategories(Seq(6)) map {
+      repository.findCategoriesForProducts(Seq(6)) map {
         categories =>
-          println(categories)
+//          println(categories)
           assert(categories.length == 2)
       }
     }
+
+    "returns products for provided category ids" in {
+
+      repository.findProductsForCategories(Seq(2)) map {
+        products =>
+          //          println(categories)
+          assert(products.length == 4)
+      }
+    }
+
   }
 
 

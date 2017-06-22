@@ -1,7 +1,7 @@
 import Models.{Category, Product, Taxonomy}
 
 import language.postfixOps
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import slick.jdbc.H2Profile.api._
 
@@ -11,29 +11,29 @@ class ShopRepository(db: Database) {
 
   import ShopRepository._
 
-//  def product(id: Int) = db.run(Products.filter(_.id === id).result.headOption)
-
   def allProducts = db.run(Products.result)
 
-  def products(ids: Seq[Int]) = db.run(Products.filter(_.id inSet ids).result)
-
-//  def category(id: Int) = db.run(Categories.filter(_.id === id).result.headOption)
+  def products(ids: Seq[Int]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
 
   def allCategories = db.run(Categories.result)
 
-  def categories(ids: Seq[Int]) = db.run(Categories.filter(_.id inSet ids).result)
+  def categories(ids: Seq[Int]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
-  def findProductsCategories(productsIds: Seq[Int]) =
-    db.run(productsCategoriesQuery(productsIds).result)
-      .map(result =>
-        result.groupBy(_._2.id).toVector.map {
-          case (_, categories) => categories.map(_._1.productId) -> categories.head._2
-        }
-      )
+  def findCategoriesForProducts(productsIds: Seq[Int]): Future[Seq[Category]] =
+    db.run(
+      Taxonometry
+        .filter(_.productId inSet productsIds)
+        .join(Categories).on(_.categoryId === _.id)
+        .result)
+      .map(_.map(_._2).distinct)
 
-  def findCategoryForProduct(productId: Int) = db.run(
-    Taxonometry.filter(_.productId === productId).join(Categories).on(_.categoryId === _.id).result
-  )
+  def findProductsForCategories(categoriesIds: Seq[Int]): Future[Seq[Product]] =
+    db.run(
+      Taxonometry
+        .filter(_.categoryId inSet categoriesIds)
+        .join(Products).on(_.productId === _.id)
+        .result)
+      .map(_.map(_._2).distinct)
 
   def close() = db.close()
 }
@@ -121,9 +121,5 @@ object ShopRepository {
 
     new ShopRepository(db)
   }
-
-  private def productsCategoriesQuery(productsIds: Seq[Int]) =
-    Taxonometry.filter(_.productId inSet productsIds)
-      .join(Categories).on(_.categoryId === _.id)
 
 }
