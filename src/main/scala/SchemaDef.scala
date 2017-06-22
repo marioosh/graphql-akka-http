@@ -1,4 +1,4 @@
-import sangria.execution.deferred.{Fetcher, HasId, Relation, RelationIds}
+import sangria.execution.deferred._
 import sangria.schema.{Argument, Field, IntType, InterfaceType, ListInputType, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
 object SchemaDef {
@@ -18,24 +18,26 @@ object SchemaDef {
     * PRODUCT
     */
 
-  val pcRelation = Relation[Category, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
+//  val pcRelation = Relation[Category, (Seq[Int], Category), Int]("productCategory", _._1, _._2)
+//
+//  val productCategoriesFetcher = Fetcher.relCaching(
+//    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
+//    (repo: ShopRepository, ids: RelationIds[Category]) => repo.findProductsCategories(ids(pcRelation))
+//  )(HasId(_.id))
 
-  val productCategoriesFetcher = Fetcher.relCaching(
-    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids),
-    (repo: ShopRepository, ids: RelationIds[Category]) => repo.findProductsCategories(ids(pcRelation))
-  )(HasId(_.id))
+
 
   implicit val ProductType: ObjectType[Unit, Product] =
     deriveObjectType[Unit, Product](
       Interfaces(IdentifiableType),
-      IncludeMethods("picture"), //by defaul macro cosinders fields only
-      AddFields(
-        Field("categories",
-          ListType(CategoryType),
-          description = Some("Categories assigned to the prodct"),
-          resolve = c => productCategoriesFetcher.deferRelSeq(pcRelation, c.value.id)
-        )
-      )
+      IncludeMethods("picture") //by defaul macro cosinders fields only
+//      AddFields(
+//        Field("categories",
+//          ListType(CategoryType),
+//          description = Some("Categories assigned to the prodct"),
+//          resolve = c => productCategoriesFetcher.deferRelSeq(pcRelation, c.value.id)
+//        )
+//      )
     )
 
   /**
@@ -59,13 +61,26 @@ object SchemaDef {
   val Id = Argument("id", IntType)
   val Ids = Argument("ids", ListInputType(IntType))
 
+  implicit val productHasId = HasId[Product, Int](_.id)
+  implicit val categoryHasId = HasId[Category, Int](_.id)
+
+  val productsFetcher = Fetcher(
+    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids)
+  )
+  val categoriesFetcher = Fetcher(
+    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids)
+  )
+
+  val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
+
   val QueryType = ObjectType(
     "Query",
     fields[ShopRepository, Unit](
       Field("product", OptionType(ProductType),
         description = Some("Returns a product with specific `id`."),
         arguments = Id :: Nil,
-        resolve = c => c.ctx.product(c arg Id)),
+        resolve = c => productsFetcher.defer(c.arg[Int]("id"))),
+
       Field("allProducts", ListType(ProductType),
         description = Some("Returns a list of all available products."),
         resolve = _.ctx.allProducts
@@ -73,12 +88,17 @@ object SchemaDef {
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
         arguments = Ids :: Nil,
-        resolve = c => c.ctx.products(c.arg[List[Int]]("ids"))
+        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
         arguments = Id :: Nil,
-        resolve = c => c.ctx.category(c arg Id)),
+        resolve = c => categoriesFetcher.deferOpt(c.arg[Int]("id"))),
+      Field("categories",ListType(CategoryType),
+        description = Some("Returns categories by provided ids"),
+        arguments = Ids :: Nil,
+        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+      ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),
         resolve = _.ctx.allCategories

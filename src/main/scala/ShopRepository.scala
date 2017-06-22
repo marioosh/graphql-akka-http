@@ -11,13 +11,13 @@ class ShopRepository(db: Database) {
 
   import ShopRepository._
 
-  def product(id: Int) = db.run(Products.filter(_.id === id).result.headOption)
+//  def product(id: Int) = db.run(Products.filter(_.id === id).result.headOption)
 
   def allProducts = db.run(Products.result)
 
   def products(ids: Seq[Int]) = db.run(Products.filter(_.id inSet ids).result)
 
-  def category(id: Int) = db.run(Categories.filter(_.id === id).result.headOption)
+//  def category(id: Int) = db.run(Categories.filter(_.id === id).result.headOption)
 
   def allCategories = db.run(Categories.result)
 
@@ -25,11 +25,15 @@ class ShopRepository(db: Database) {
 
   def findProductsCategories(productsIds: Seq[Int]) =
     db.run(productsCategoriesQuery(productsIds).result)
-        .map(result =>
-          result.groupBy(_._2.id).toVector.map {
-            case (_, categories) => categories.map(_._1.productId) -> categories.head._2
-          }
-        )
+      .map(result =>
+        result.groupBy(_._2.id).toVector.map {
+          case (_, categories) => categories.map(_._1.productId) -> categories.head._2
+        }
+      )
+
+  def findCategoryForProduct(productId: Int) = db.run(
+    Taxonometry.filter(_.productId === productId).join(Categories).on(_.categoryId === _.id).result
+  )
 
   def close() = db.close()
 }
@@ -64,13 +68,16 @@ object ShopRepository {
   /**
     * JOIN TABLE
     */
-  class TaxonomyTable(tag: Tag) extends Table[Taxonomy](tag, "PRODUCT_CATEGORY"){
+  class TaxonomyTable(tag: Tag) extends Table[Taxonomy](tag, "PRODUCT_CATEGORY") {
     def productId = column[Int]("PRODUCT_ID")
+
     def categoryId = column[Int]("CATEGORY_ID")
 
     //relations
     def product = foreignKey("PRODUCT_FK", productId, Products)(_.id)
+
     def category = foreignKey("CATEGORY_FK", categoryId, Categories)(_.id)
+
     def idx = index("UNIQUE_IDX", (productId, categoryId), unique = true)
 
     def * = (productId, categoryId) <> ((Taxonomy.apply _).tupled, Taxonomy.unapply)
@@ -95,15 +102,15 @@ object ShopRepository {
       Category(3, "Home interior")
     ),
     Taxonometry ++= Seq(
-      Taxonomy(1,1),
-      Taxonomy(2,2),
-      Taxonomy(3,1),
-      Taxonomy(4,1),
-      Taxonomy(4,2),
-      Taxonomy(5,1),
-      Taxonomy(5,2),
-      Taxonomy(6,3),
-      Taxonomy(6,2)
+      Taxonomy(1, 1),
+      Taxonomy(2, 2),
+      Taxonomy(3, 1),
+      Taxonomy(4, 1),
+      Taxonomy(4, 2),
+      Taxonomy(5, 1),
+      Taxonomy(5, 2),
+      Taxonomy(6, 3),
+      Taxonomy(6, 2)
     )
   )
 
@@ -117,6 +124,6 @@ object ShopRepository {
 
   private def productsCategoriesQuery(productsIds: Seq[Int]) =
     Taxonometry.filter(_.productId inSet productsIds)
-        .join(Categories).on(_.categoryId === _.id)
+      .join(Categories).on(_.categoryId === _.id)
 
 }

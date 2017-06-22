@@ -7,6 +7,7 @@ import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
 import sangria.parser.QueryParser
 import sangria.marshalling.sprayJson._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import sangria.execution.deferred.DeferredResolver
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -45,11 +46,12 @@ object GraphQLServer {
       query,
       repository,
       variables = vars,
-      operationName = op)
-      .map(OK -> _)
-      .recover {
-        case error: QueryAnalysisError => BadRequest -> error.resolveError
-        case error: ErrorWithResolver => InternalServerError -> error.resolveError
-      }
+      operationName = op,
+      deferredResolver = SchemaDef.deferredResolver)
+        .map(OK -> _)
+        .recover {
+          case error: QueryAnalysisError => BadRequest -> error.resolveError
+          case error: ErrorWithResolver => InternalServerError -> error.resolveError
+        }
   }
 }

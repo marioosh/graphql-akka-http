@@ -9,6 +9,7 @@ import SchemaDef._
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
   val repository = ShopRepository.createDatabase()
+  val resolver = SchemaDef.deferredResolver
 
   "A Math" should {
     "still works" in {
@@ -70,7 +71,7 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
         """.stripMargin.parseJson
 
 
-      Executor.execute(ShopSchema, query, repository) map {
+      Executor.execute(ShopSchema, query, repository,deferredResolver = resolver) map {
         result => assert(result == response)
       }
 
