@@ -1,0 +1,20 @@
+query stage1($size: Int!) {
+    allProducts {
+        name
+        description
+        price
+        picture(size: $size){
+            url
+        }
+        priceAgain: price
+    }
+
+    product(id: 1){
+        name
+    }
+
+    products(ids:[1,2]){
+        name
+        description
+    }
+}
