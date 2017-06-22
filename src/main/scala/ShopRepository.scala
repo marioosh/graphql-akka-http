@@ -34,7 +34,7 @@ class ShopRepository(db: Database) {
         .result)
       .map(_.map(_._2).distinct)
 
-  def productsByCategory(categoriesIds: Seq[String]): Future[Seq[(Seq[Int], Product)]] =
+  def productsByCategories(categoriesIds: Seq[String]): Future[Seq[(Seq[String], Product)]] =
     db.run(
       Taxonometry
         .filter(_.categoryId inSet categoriesIds)
@@ -42,7 +42,7 @@ class ShopRepository(db: Database) {
         .result)
       .map{ result =>
         result.groupBy(_._2.id).toVector.map {
-          case (_, products) ⇒ products.map(_._1.productId) → products.head._2
+          case (_, products) ⇒ products.map(_._1.categoryId) → products.head._2
         }
       }
 

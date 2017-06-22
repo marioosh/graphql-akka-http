@@ -1,3 +1,4 @@
+import Models.Product
 import SchemaDef._
 import org.scalatest.{AsyncWordSpec, Matchers}
 import sangria.execution.Executor
@@ -91,6 +92,16 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
         products =>
           //          println(categories)
           assert(products.length == 4)
+      }
+    }
+
+    "returns tupled of products for provided categories" in {
+
+      repository.productsByCategories(Seq("2")) map {
+        products =>
+          //          println(categories)
+          assert(products.length == 4)
+          assert(products.contains((Seq("2"),Product(6, "Candle", "", BigDecimal(13.99)))))
       }
     }
 

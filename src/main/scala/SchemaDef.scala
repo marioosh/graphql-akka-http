@@ -32,18 +32,18 @@ object SchemaDef {
 
   implicit val CategoryType: ObjectType[Unit, Category] =
     deriveObjectType[Unit, Category](
-      ObjectTypeDescription("The category of products")
+      ObjectTypeDescription("The category of products"),
+      AddFields(
+        Field("products", ListType(ProductType),
+          resolve = c => productsFetcher.deferRelSeq(product, c.value.id))
+      )
     )
 
-  implicit val productHasId = HasId[Product, Int](_.id)
-  implicit val categoryHasId = HasId[Category, String](_.id)
+  val product = Relation[Product, (Seq[String], Product), String]("product-category", _._1, _._2)
 
-
-  //  val prodComplexCat = Relation[Product, (Seq[Int], Product), Int]("product-category-complex", _._1, _._2)
-  //  val prodComplexCat = Relation[Product(result), (Seq[Int], Product)[tmp], Int[productId])]
-
-  val productsFetcher = Fetcher(
-    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids)
+  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[String], Product), Int] = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids),
+    (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
   )
   val categoriesFetcher = Fetcher(
     (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids)
