@@ -71,7 +71,7 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
         """.stripMargin.parseJson
 
 
-      Executor.execute(ShopSchema, query, repository,deferredResolver = resolver) map {
+      Executor.execute(ShopSchema, query, repository, deferredResolver = resolver) map {
         result => assert(result == response)
       }
 
@@ -79,19 +79,9 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
 
     "returns categories for provided products ids" in {
 
-      repository.findCategoriesForProducts(Seq(6)) map {
+      repository.categoriesByProducts(Seq(6)) map {
         categories =>
-//          println(categories)
           assert(categories.length == 2)
-      }
-    }
-
-    "returns products for provided category ids" in {
-
-      repository.findProductsForCategories(Seq("2")) map {
-        products =>
-          //          println(categories)
-          assert(products.length == 4)
       }
     }
 
@@ -99,9 +89,8 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
 
       repository.productsByCategories(Seq("2")) map {
         products =>
-          //          println(categories)
           assert(products.length == 4)
-          assert(products.contains((Seq("2"),Product(6, "Candle", "", BigDecimal(13.99)))))
+          assert(products.contains((Seq("2"), Product(6, "Candle", "", BigDecimal(13.99)))))
       }
     }
 
