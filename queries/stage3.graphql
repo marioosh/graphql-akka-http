@@ -1,0 +1,33 @@
+query stage3{
+
+    allProducts {
+        name
+        description
+        picture(size: 100){
+            url
+        }
+        categories {
+            name
+            products{
+                name
+            }
+        }
+    }
+
+    category(id: "2"){
+        name
+        products{
+            name
+        }
+    }
+
+    product(id: 4){
+        name
+        categories {
+            name
+        }
+        picture(size:666){
+            url
+        }
+    }
+}

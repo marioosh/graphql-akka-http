@@ -1,3 +1,4 @@
+import Models.Product
 import SchemaDef._
 import org.scalatest.{AsyncWordSpec, Matchers}
 import sangria.execution.Executor
@@ -8,6 +9,7 @@ import spray.json._
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
   val repository = ShopRepository.createDatabase()
+  val resolver = SchemaDef.deferredResolver
 
   "A Math" should {
     "still works" in {
@@ -34,6 +36,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
             products(ids: [1,2]) {
               name
             }
+
+            allCategories {
+              name
+            }
           }
 
       """
@@ -54,16 +60,38 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
           |    "products":[
           |     {"name":"Cheescake"},
           |     {"name":"Health Potion"}
+          |    ],
+          |    "allCategories":[
+          |     {"name":"Food"},
+          |     {"name":"Magic ingredients"},
+          |     {"name":"Home interior"}
           |    ]
           |  }
           |}
         """.stripMargin.parseJson
 
 
-      Executor.execute(ShopSchema, query, repository) map {
+      Executor.execute(ShopSchema, query, repository, deferredResolver = resolver) map {
         result => assert(result == response)
       }
 
+    }
+
+    "returns categories for provided products ids" in {
+
+      repository.categoriesByProducts(Seq(6)) map {
+        categories =>
+          assert(categories.length == 2)
+      }
+    }
+
+    "returns tupled of products for provided categories" in {
+
+      repository.productsByCategories(Seq("2")) map {
+        products =>
+          assert(products.length == 4)
+          assert(products.contains((Seq("2"), Product(6, "Candle", "", BigDecimal(13.99)))))
+      }
     }
 
   }

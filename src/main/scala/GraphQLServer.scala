@@ -15,6 +15,14 @@ object GraphQLServer {
 
   val repository = ShopRepository.createDatabase()
 
+  case object TooComplexQuery extends Exception
+
+  val rejectComplexQueries = QueryReducer.rejectComplexQueries(300, (_: Double, _:ShopRepository) => TooComplexQuery)
+
+  val exceptionHandler: Executor.ExceptionHandler = {
+    case (_, TooComplexQuery) => HandledException("Too complex query. Please reduce the field selection")
+  }
+
   def endpoint(requestJSON: JsValue)(implicit e: ExecutionContext): Route = {
 
     val JsObject(fields) = requestJSON
@@ -45,7 +53,10 @@ object GraphQLServer {
       query,
       repository,
       variables = vars,
-      operationName = op
+      operationName = op,
+      deferredResolver = SchemaDef.deferredResolver,
+      exceptionHandler = exceptionHandler,
+      queryReducers = rejectComplexQueries :: Nil
     ).map(OK -> _)
       .recover {
         case error: QueryAnalysisError => BadRequest -> error.resolveError
