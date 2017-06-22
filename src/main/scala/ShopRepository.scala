@@ -40,9 +40,21 @@ class ShopRepository(db: Database) {
         .filter(_.categoryId inSet categoriesIds)
         .join(Products).on(_.productId === _.id)
         .result)
-      .map{ result =>
+      .map { result =>
         result.groupBy(_._2.id).toVector.map {
           case (_, products) ⇒ products.map(_._1.categoryId) → products.head._2
+        }
+      }
+
+  def categoriesByProducts(productsIds: Seq[Int]): Future[Seq[(Seq[Int], Category)]] =
+    db.run(
+      Taxonometry
+        .filter(_.productId inSet productsIds)
+        .join(Categories).on(_.categoryId === _.id)
+        .result)
+      .map { result =>
+        result.groupBy(_._2.id).toVector.map {
+          case (_, categories) ⇒ categories.map(_._1.productId) → categories.head._2
         }
       }
 

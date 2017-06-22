@@ -17,7 +17,11 @@ object SchemaDef {
   implicit val ProductType: ObjectType[Unit, Product] =
     deriveObjectType[Unit, Product](
       Interfaces(IdentifiableType),
-      IncludeMethods("picture") //by defaul macro cosinders fields only
+      IncludeMethods("picture"), //by defaul macro cosinders fields only
+      AddFields(
+        Field("categories", ListType(CategoryType),
+          resolve = c => categoriesFetcher.deferRelSeq(category, c.value.id))
+      )
     )
 
   implicit val PictureType: ObjectType[Unit, Picture] =
@@ -40,13 +44,15 @@ object SchemaDef {
     )
 
   val product = Relation[Product, (Seq[String], Product), String]("product-category", _._1, _._2)
+  val category = Relation[Category, (Seq[Int], Category), Int]("category-product", _._1, _._2)
 
   val productsFetcher: Fetcher[ShopRepository, Product, (Seq[String], Product), Int] = Fetcher.relCaching(
     (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids),
     (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
   )
-  val categoriesFetcher = Fetcher(
-    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids)
+  val categoriesFetcher = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids),
+    (repo: ShopRepository, ids: RelationIds[Category]) => repo.categoriesByProducts(ids(category))
   )
 
   lazy val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
