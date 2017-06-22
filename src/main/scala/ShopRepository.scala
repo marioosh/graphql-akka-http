@@ -13,15 +13,10 @@ class ShopRepository(db: Database) {
 
   def products(ids: Seq[Int]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
 
-  def product(id: Int): Future[Option[Product]] = db.run(Products.filter(_.id === id).result.headOption)
-
   def allCategories = db.run(Categories.result)
 
   def categories(ids: Seq[String]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
-  def category(id: String): Future[Option[Category]] = db.run(Categories.filter(_.id === id).result.headOption)
-
-  def close() = db.close()
 }
 
 object ShopRepository {

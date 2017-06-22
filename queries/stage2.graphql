@@ -1,0 +1,19 @@
+query stage2{
+
+    product(id: 1){
+        name
+    }
+
+    products(ids:[1,2]){
+        name
+        description
+    }
+
+    allCategories {
+        name
+    }
+
+    categories(ids: ["2", "3", "4"]){
+        name
+    }
+}

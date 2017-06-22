@@ -8,6 +8,7 @@ import spray.json._
 class ProductSpecs extends AsyncWordSpec with Matchers {
 
   val repository = ShopRepository.createDatabase()
+  val resolver = SchemaDef.deferredResolver
 
   "A Math" should {
     "still works" in {
@@ -34,6 +35,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
             products(ids: [1,2]) {
               name
             }
+
+            allCategories {
+              name
+            }
           }
 
       """
@@ -54,13 +59,18 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
           |    "products":[
           |     {"name":"Cheescake"},
           |     {"name":"Health Potion"}
+          |    ],
+          |    "allCategories":[
+          |     {"name":"Food"},
+          |     {"name":"Magic ingredients"},
+          |     {"name":"Home interior"}
           |    ]
           |  }
           |}
         """.stripMargin.parseJson
 
 
-      Executor.execute(ShopSchema, query, repository) map {
+      Executor.execute(ShopSchema, query, repository, deferredResolver = resolver) map {
         result => assert(result == response)
       }
 

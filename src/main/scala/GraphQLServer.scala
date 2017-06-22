@@ -45,7 +45,8 @@ object GraphQLServer {
       query,
       repository,
       variables = vars,
-      operationName = op
+      operationName = op,
+      deferredResolver = SchemaDef.deferredResolver
     ).map(OK -> _)
       .recover {
         case error: QueryAnalysisError => BadRequest -> error.resolveError
