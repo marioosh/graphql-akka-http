@@ -60,3 +60,4 @@ project/plugins/project/
 .cache
 .lib/
 
+graphql.*.json
