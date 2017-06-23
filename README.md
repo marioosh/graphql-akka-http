@@ -17,3 +17,7 @@ After the server is started you can run queries interactively using [GraphiQL](h
 This example uses an in-memory [H2](http://www.h2database.com/html/main.html) SQL database. The schema and example data will be re-created every time server starts.
 
 If you would like to change the database configuration or use a different database, then please update `src/main/resources/application.conf`.
+
+`master` branch has the newest version of code, but if you want to repeat and test what I did during presentation
+there are `state1` to `state5` branches for this purpose,
+additionally there are patch files that would help observe what changed during every stage 
