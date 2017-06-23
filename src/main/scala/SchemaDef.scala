@@ -99,7 +99,17 @@ object SchemaDef {
     )
   )
 
-  val ShopSchema = Schema(QueryType) //define entry point
+  val IdArg = Argument("id", StringType)
+  val NameArg = Argument("name", StringType)
+
+  val Mutation = ObjectType("Mutation", fields[ShopRepository, Unit](
+      Field("addCategory", CategoryType,
+        arguments = IdArg :: NameArg :: Nil,
+        resolve = c => c.ctx.addCategory(c.arg(IdArg), c.arg(NameArg))
+      )
+  ))
+
+  val ShopSchema = Schema(QueryType, Some(Mutation)) //define entry point
 
   def constantComplexity[Ctx](complexity: Double) =
     Some((_: Ctx, _: Args, child: Double) ⇒ child + complexity)
