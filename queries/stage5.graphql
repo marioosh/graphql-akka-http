@@ -1,0 +1,16 @@
+mutation stage5{
+
+    addCategory(id: "foo", name: "FOO"){
+        id
+        name
+    }
+
+
+}
+
+query AllCats {
+    allCategories {
+        id
+        name
+    }
+}

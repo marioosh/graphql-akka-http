@@ -41,6 +41,12 @@ class ShopRepository(db: Database) {
           case (_, categories) ⇒ categories.map(_._1.productId) → categories.head._2
         }
       }
+
+  def addCategory(id: String, name: String): Future[Category] = {
+    val cat: Category = Category(id, name)
+    db.run(Categories.insertOrUpdate(cat)).map(_ => cat)
+  }
+
 }
 
 object ShopRepository {
