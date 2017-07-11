@@ -1,4 +1,4 @@
-import Models.{Category, Product, Taxonomy}
+import Models._
 import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.duration._
@@ -11,18 +11,18 @@ class ShopRepository(db: Database) {
 
   def allProducts = db.run(Products.result)
 
-  def products(ids: Seq[Int]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
+  def products(ids: Seq[ProductId]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
 
   def allCategories = db.run(Categories.result)
 
-  def categories(ids: Seq[Int]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+  def categories(ids: Seq[CategoryId]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
 }
 
 object ShopRepository {
 
   class ProductTable(tag: Tag) extends Table[Product](tag, "PRODUCTS") {
-    def id = column[Int]("PRODUCT_ID", O.PrimaryKey)
+    def id = column[ProductId]("PRODUCT_ID", O.PrimaryKey)
 
     def name = column[String]("NAME")
 
@@ -36,7 +36,7 @@ object ShopRepository {
   val Products = TableQuery[ProductTable]
 
   class CategoryTable(tag: Tag) extends Table[Category](tag, "CATEGORY") {
-    def id = column[Int]("CATEGORY_ID", O.PrimaryKey)
+    def id = column[CategoryId]("CATEGORY_ID", O.PrimaryKey)
 
     def name = column[String]("NAME")
 
@@ -50,9 +50,9 @@ object ShopRepository {
     * JOIN TABLE
     */
   class TaxonomyTable(tag: Tag) extends Table[Taxonomy](tag, "PRODUCT_CATEGORY") {
-    def productId = column[Int]("PRODUCT_ID")
+    def productId = column[ProductId]("PRODUCT_ID")
 
-    def categoryId = column[Int]("CATEGORY_ID")
+    def categoryId = column[CategoryId]("CATEGORY_ID")
 
     //relations
     def product = foreignKey("PRODUCT_FK", productId, Products)(_.id)
