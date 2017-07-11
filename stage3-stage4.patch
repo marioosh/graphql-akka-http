@@ -1,0 +1,112 @@
+diff --git a/queries/stage4.graphql b/queries/stage4.graphql
+new file mode 100644
+index 0000000..b18e630
+--- /dev/null
++++ b/queries/stage4.graphql
+@@ -0,0 +1,17 @@
++query stage4{
++
++    allCategories { # 250
++        name
++        products { #30
++            name
++            description
++            picture(size: 100){
++                url
++            }
++            categories { #30
++                name
++            }
++        }
++    }
++
++}
+diff --git a/src/main/scala/GraphQLServer.scala b/src/main/scala/GraphQLServer.scala
+index 714005e..c936e20 100644
+--- a/src/main/scala/GraphQLServer.scala
++++ b/src/main/scala/GraphQLServer.scala
+@@ -15,6 +15,14 @@ object GraphQLServer {
+ 
+   val repository = ShopRepository.createDatabase()
+ 
++  case object TooComplexQuery extends Exception
++
++  val rejectComplexQueries = QueryReducer.rejectComplexQueries(300, (_: Double, _:ShopRepository) => TooComplexQuery)
++
++  val exceptionHandler: Executor.ExceptionHandler = {
++    case (_, TooComplexQuery) => HandledException("Too complex query. Please reduce the field selection")
++  }
++
+   def endpoint(requestJSON: JsValue)(implicit e: ExecutionContext): Route = {
+ 
+     val JsObject(fields) = requestJSON
+@@ -46,7 +54,9 @@ object GraphQLServer {
+       repository,
+       variables = vars,
+       operationName = op,
+-      deferredResolver = SchemaDef.deferredResolver
++      deferredResolver = SchemaDef.deferredResolver,
++      exceptionHandler = exceptionHandler,
++      queryReducers = rejectComplexQueries :: Nil
+     ).map(OK -> _)
+       .recover {
+         case error: QueryAnalysisError => BadRequest -> error.resolveError
+diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
+index 636b2e0..1604f31 100644
+--- a/src/main/scala/SchemaDef.scala
++++ b/src/main/scala/SchemaDef.scala
+@@ -7,10 +7,8 @@ object SchemaDef {
+   import sangria.macros.derive._
+ 
+   //category has relation to product
+-  //category id's type is String
+   val product = Relation[Product, (Seq[CategoryId], Product), CategoryId]("product-category", _._1, _._2)
+   //product has relation to category
+-  //product id's type is Int
+   val category = Relation[Category, (Seq[ProductId], Category), ProductId]("category-product", _._1, _._2)
+ 
+   val IdentifiableType = InterfaceType(
+@@ -27,6 +25,7 @@ object SchemaDef {
+       IncludeMethods("picture"), //by defaul macro cosinders fields only
+       AddFields(
+         Field("categories", ListType(CategoryType),
++          complexity = constantComplexity(30),
+           resolve = c => categoriesFetcher.deferRelSeq(category, c.value.id))
+       )
+     )
+@@ -46,6 +45,7 @@ object SchemaDef {
+       ObjectTypeDescription("The category of products"),
+       AddFields(
+         Field("products", ListType(ProductType),
++          complexity = constantComplexity(30),
+           resolve = c => productsFetcher.deferRelSeq(product, c.value.id))
+       )
+     )
+@@ -67,6 +67,7 @@ object SchemaDef {
+     fields[ShopRepository, Unit](
+       Field("allProducts", ListType(ProductType),
+         description = Some("Returns a list of all available products."),
++        complexity = constantComplexity(100),
+         resolve = _.ctx.allProducts
+       ),
+       Field("product", OptionType(ProductType),
+@@ -85,14 +86,19 @@ object SchemaDef {
+       Field("categories", ListType(CategoryType),
+         description = Some("Returns categories by provided ids"),
+         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
++        complexity = constantComplexity(30),
+         resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[CategoryId]]("ids"))
+       ),
+       Field("allCategories", ListType(CategoryType),
+         description = Some("Returns a list of all available categories."),
++        complexity = constantComplexity(250),
+         resolve = _.ctx.allCategories
+       )
+     )
+   )
+ 
+   val ShopSchema = Schema(QueryType) //define entry point
++
++  def constantComplexity[Ctx](complexity: Double) =
++    Some((_: Ctx, _: Args, child: Double) ⇒ child + complexity)
+ }
