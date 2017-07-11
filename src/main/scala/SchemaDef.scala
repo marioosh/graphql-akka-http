@@ -31,6 +31,7 @@ object SchemaDef {
 
   implicit val CategoryType: ObjectType[Unit, Category] =
     deriveObjectType[Unit, Category](
+      Interfaces(IdentifiableType),
       ObjectTypeDescription("The category of products")
     )
 

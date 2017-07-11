@@ -17,9 +17,9 @@ class ShopRepository(db: Database) {
 
   def allCategories = db.run(Categories.result)
 
-  def categories(ids: Seq[String]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+  def categories(ids: Seq[Int]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
-  def category(id: String): Future[Option[Category]] = db.run(Categories.filter(_.id === id).result.headOption)
+  def category(id: Int): Future[Option[Category]] = db.run(Categories.filter(_.id === id).result.headOption)
 
 }
 
@@ -40,7 +40,7 @@ object ShopRepository {
   val Products = TableQuery[ProductTable]
 
   class CategoryTable(tag: Tag) extends Table[Category](tag, "CATEGORY") {
-    def id = column[String]("CATEGORY_ID", O.PrimaryKey)
+    def id = column[Int]("CATEGORY_ID", O.PrimaryKey)
 
     def name = column[String]("NAME")
 
@@ -56,7 +56,7 @@ object ShopRepository {
   class TaxonomyTable(tag: Tag) extends Table[Taxonomy](tag, "PRODUCT_CATEGORY") {
     def productId = column[Int]("PRODUCT_ID")
 
-    def categoryId = column[String]("CATEGORY_ID")
+    def categoryId = column[Int]("CATEGORY_ID")
 
     //relations
     def product = foreignKey("PRODUCT_FK", productId, Products)(_.id)
@@ -82,20 +82,20 @@ object ShopRepository {
       Product(6, "Candle", "", BigDecimal(13.99))
     ),
     Categories ++= Seq(
-      Category("1", "Food"),
-      Category("2", "Magic ingredients"),
-      Category("3", "Home interior")
+      Category(1, "Food"),
+      Category(2, "Magic ingredients"),
+      Category(3, "Home interior")
     ),
     Taxonometry ++= Seq(
-      Taxonomy(1, "1"),
-      Taxonomy(2, "2"),
-      Taxonomy(3, "1"),
-      Taxonomy(4, "1"),
-      Taxonomy(4, "2"),
-      Taxonomy(5, "1"),
-      Taxonomy(5, "2"),
-      Taxonomy(6, "3"),
-      Taxonomy(6, "2")
+      Taxonomy(1, 1),
+      Taxonomy(2, 2),
+      Taxonomy(3, 1),
+      Taxonomy(4, 1),
+      Taxonomy(4, 2),
+      Taxonomy(5, 1),
+      Taxonomy(5, 2),
+      Taxonomy(6, 3),
+      Taxonomy(6, 2)
     )
   )
 
