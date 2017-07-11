@@ -52,10 +52,21 @@ index 714005e..c936e20 100644
        .recover {
          case error: QueryAnalysisError => BadRequest -> error.resolveError
 diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
-index 558a9a7..466cf26 100644
+index 636b2e0..1604f31 100644
 --- a/src/main/scala/SchemaDef.scala
 +++ b/src/main/scala/SchemaDef.scala
-@@ -27,6 +27,7 @@ object SchemaDef {
+@@ -7,10 +7,8 @@ object SchemaDef {
+   import sangria.macros.derive._
+ 
+   //category has relation to product
+-  //category id's type is String
+   val product = Relation[Product, (Seq[CategoryId], Product), CategoryId]("product-category", _._1, _._2)
+   //product has relation to category
+-  //product id's type is Int
+   val category = Relation[Category, (Seq[ProductId], Category), ProductId]("category-product", _._1, _._2)
+ 
+   val IdentifiableType = InterfaceType(
+@@ -27,6 +25,7 @@ object SchemaDef {
        IncludeMethods("picture"), //by defaul macro cosinders fields only
        AddFields(
          Field("categories", ListType(CategoryType),
@@ -63,7 +74,7 @@ index 558a9a7..466cf26 100644
            resolve = c => categoriesFetcher.deferRelSeq(category, c.value.id))
        )
      )
-@@ -46,6 +47,7 @@ object SchemaDef {
+@@ -46,6 +45,7 @@ object SchemaDef {
        ObjectTypeDescription("The category of products"),
        AddFields(
          Field("products", ListType(ProductType),
@@ -71,7 +82,7 @@ index 558a9a7..466cf26 100644
            resolve = c => productsFetcher.deferRelSeq(product, c.value.id))
        )
      )
-@@ -67,6 +69,7 @@ object SchemaDef {
+@@ -67,6 +67,7 @@ object SchemaDef {
      fields[ShopRepository, Unit](
        Field("allProducts", ListType(ProductType),
          description = Some("Returns a list of all available products."),
@@ -79,12 +90,12 @@ index 558a9a7..466cf26 100644
          resolve = _.ctx.allProducts
        ),
        Field("product", OptionType(ProductType),
-@@ -85,14 +88,19 @@ object SchemaDef {
+@@ -85,14 +86,19 @@ object SchemaDef {
        Field("categories", ListType(CategoryType),
          description = Some("Returns categories by provided ids"),
-         arguments = Argument("ids", ListInputType(StringType)) :: Nil,
+         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
 +        complexity = constantComplexity(30),
-         resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[String]]("ids"))
+         resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[CategoryId]]("ids"))
        ),
        Field("allCategories", ListType(CategoryType),
          description = Some("Returns a list of all available categories."),

@@ -1,6 +1,6 @@
 diff --git a/queries/stage3.graphql b/queries/stage3.graphql
 new file mode 100644
-index 0000000..3bbeca4
+index 0000000..fa8c7c3
 --- /dev/null
 +++ b/queries/stage3.graphql
 @@ -0,0 +1,33 @@
@@ -20,7 +20,7 @@ index 0000000..3bbeca4
 +        }
 +    }
 +
-+    category(id: "2"){
++    category(id: 2){
 +        name
 +        products{
 +            name
@@ -38,7 +38,7 @@ index 0000000..3bbeca4
 +    }
 +}
 diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
-index 25958c2..558a9a7 100644
+index e774438..636b2e0 100644
 --- a/src/main/scala/SchemaDef.scala
 +++ b/src/main/scala/SchemaDef.scala
 @@ -1,4 +1,4 @@
@@ -53,10 +53,10 @@ index 25958c2..558a9a7 100644
  
 +  //category has relation to product
 +  //category id's type is String
-+  val product = Relation[Product, (Seq[String], Product), String]("product-category", _._1, _._2)
++  val product = Relation[Product, (Seq[CategoryId], Product), CategoryId]("product-category", _._1, _._2)
 +  //product has relation to category
 +  //product id's type is Int
-+  val category = Relation[Category, (Seq[Int], Category), Int]("category-product", _._1, _._2)
++  val category = Relation[Category, (Seq[ProductId], Category), ProductId]("category-product", _._1, _._2)
 +
    val IdentifiableType = InterfaceType(
      "Identifiable",
@@ -74,10 +74,11 @@ index 25958c2..558a9a7 100644
      )
  
    implicit val PictureType: ObjectType[Unit, Picture] =
-@@ -32,18 +43,24 @@ object SchemaDef {
+@@ -32,19 +43,24 @@ object SchemaDef {
  
    implicit val CategoryType: ObjectType[Unit, Category] =
      deriveObjectType[Unit, Category](
+-      Interfaces(IdentifiableType),
 -      ObjectTypeDescription("The category of products")
 +      ObjectTypeDescription("The category of products"),
 +      AddFields(
@@ -87,16 +88,16 @@ index 25958c2..558a9a7 100644
      )
  
 -  val productFetcher = Fetcher(
--    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids)
-+  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[String], Product), Int] = Fetcher.relCaching(
-+    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids),
+-    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids)
++  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[ProductId], Product), ProductId] = Fetcher.relCaching(
++    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids),
 +    (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
    )
  
 -  val categoriesFetcher = Fetcher(
--    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids)
-+  val categoriesFetcher: Fetcher[ShopRepository, Category, (Seq[Int], Category), String] = Fetcher.relCaching(
-+    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids),
+-    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids)
++  val categoriesFetcher: Fetcher[ShopRepository, Category, (Seq[CategoryId], Category), CategoryId] = Fetcher.relCaching(
++    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids),
 +    (repo: ShopRepository, ids: RelationIds[Category]) => repo.categoriesByProducts(ids(category))
    )
  
@@ -105,26 +106,26 @@ index 25958c2..558a9a7 100644
  
    val QueryType = ObjectType(
      "Query",
-@@ -55,11 +72,11 @@ object SchemaDef {
+@@ -56,11 +72,11 @@ object SchemaDef {
        Field("product", OptionType(ProductType),
          description = Some("Returns a product with specific `id`."),
          arguments = Argument("id", IntType) :: Nil,
--        resolve = c => productFetcher.defer(c.arg[Int]("id"))),
-+        resolve = c => productsFetcher.defer(c.arg[Int]("id"))),
+-        resolve = c => productFetcher.defer(c.arg[ProductId]("id"))),
++        resolve = c => productsFetcher.defer(c.arg[ProductId]("id"))),
        Field("products", ListType(ProductType),
          description = Some("Returns a list of products for provided IDs."),
          arguments = Argument("ids", ListInputType(IntType)) :: Nil,
--        resolve = c => productFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
-+        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+-        resolve = c => productFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
++        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
        ),
        Field("category", OptionType(CategoryType),
          description = Some("Returns a category with specific `id`."),
 diff --git a/src/main/scala/ShopRepository.scala b/src/main/scala/ShopRepository.scala
-index 285cb98..d722845 100644
+index 8d4f335..23c552c 100644
 --- a/src/main/scala/ShopRepository.scala
 +++ b/src/main/scala/ShopRepository.scala
 @@ -1,6 +1,7 @@
- import Models.{Category, Product, Taxonomy}
+ import Models._
  import slick.jdbc.H2Profile.api._
  
 +import scala.concurrent.ExecutionContext.Implicits.global
@@ -133,9 +134,9 @@ index 285cb98..d722845 100644
  import scala.language.postfixOps
 @@ -17,6 +18,29 @@ class ShopRepository(db: Database) {
  
-   def categories(ids: Seq[String]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+   def categories(ids: Seq[CategoryId]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
  
-+  def productsByCategories(categoriesIds: Seq[String]): Future[Seq[(Seq[String], Product)]] =
++  def productsByCategories(categoriesIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Product)]] =
 +    db.run(
 +      Taxonometry
 +        .filter(_.categoryId inSet categoriesIds)
@@ -147,7 +148,7 @@ index 285cb98..d722845 100644
 +        }
 +      }
 +
-+  def categoriesByProducts(productsIds: Seq[Int]): Future[Seq[(Seq[Int], Category)]] =
++  def categoriesByProducts(productsIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Category)]] =
 +    db.run(
 +      Taxonometry
 +        .filter(_.productId inSet productsIds)
@@ -162,7 +163,7 @@ index 285cb98..d722845 100644
  
  object ShopRepository {
 diff --git a/src/test/scala/ProductSpecs.scala b/src/test/scala/ProductSpecs.scala
-index 1f8f317..f494fe7 100644
+index 1f8f317..d1c011e 100644
 --- a/src/test/scala/ProductSpecs.scala
 +++ b/src/test/scala/ProductSpecs.scala
 @@ -1,3 +1,4 @@
@@ -184,10 +185,10 @@ index 1f8f317..f494fe7 100644
 +
 +    "returns tupled of products for provided categories" in {
 +
-+      repository.productsByCategories(Seq("2")) map {
++      repository.productsByCategories(Seq(2)) map {
 +        products =>
 +          assert(products.length == 4)
-+          assert(products.contains((Seq("2"), Product(6, "Candle", "", BigDecimal(13.99)))))
++          assert(products.contains((Seq(2), Product(6, "Candle", "", BigDecimal(13.99)))))
 +      }
 +    }
 +

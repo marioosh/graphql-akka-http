@@ -21,15 +21,15 @@ index 0000000..82a1f99
 +    }
 +}
 diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
-index 466cf26..be6d53e 100644
+index 1604f31..b3ab278 100644
 --- a/src/main/scala/SchemaDef.scala
 +++ b/src/main/scala/SchemaDef.scala
-@@ -99,7 +99,17 @@ object SchemaDef {
+@@ -97,7 +97,17 @@ object SchemaDef {
      )
    )
  
 -  val ShopSchema = Schema(QueryType) //define entry point
-+  val IdArg = Argument("id", StringType)
++  val IdArg = Argument("id", IntType)
 +  val NameArg = Argument("name", StringType)
 +
 +  val Mutation = ObjectType("Mutation", fields[ShopRepository, Unit](
@@ -44,7 +44,7 @@ index 466cf26..be6d53e 100644
    def constantComplexity[Ctx](complexity: Double) =
      Some((_: Ctx, _: Args, child: Double) ⇒ child + complexity)
 diff --git a/src/main/scala/ShopRepository.scala b/src/main/scala/ShopRepository.scala
-index d722845..d21ba89 100644
+index 23c552c..154741d 100644
 --- a/src/main/scala/ShopRepository.scala
 +++ b/src/main/scala/ShopRepository.scala
 @@ -41,6 +41,12 @@ class ShopRepository(db: Database) {
@@ -52,69 +52,7 @@ index d722845..d21ba89 100644
          }
        }
 +
-+  def addCategory(id: String, name: String): Future[Category] = {
-+    val cat: Category = Category(id, name)
-+    db.run(Categories.insertOrUpdate(cat)).map(_ => cat)
-+  }
-+
- }
- 
- object ShopRepository {
-diff --git a/queries/stage5.graphql b/queries/stage5.graphql
-new file mode 100644
-index 0000000..82a1f99
---- /dev/null
-+++ b/queries/stage5.graphql
-@@ -0,0 +1,16 @@
-+mutation stage5{
-+
-+    addCategory(id: "foo", name: "FOO"){
-+        id
-+        name
-+    }
-+
-+
-+}
-+
-+query AllCats {
-+    allCategories {
-+        id
-+        name
-+    }
-+}
-diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
-index 466cf26..be6d53e 100644
---- a/src/main/scala/SchemaDef.scala
-+++ b/src/main/scala/SchemaDef.scala
-@@ -99,7 +99,17 @@ object SchemaDef {
-     )
-   )
- 
--  val ShopSchema = Schema(QueryType) //define entry point
-+  val IdArg = Argument("id", StringType)
-+  val NameArg = Argument("name", StringType)
-+
-+  val Mutation = ObjectType("Mutation", fields[ShopRepository, Unit](
-+      Field("addCategory", CategoryType,
-+        arguments = IdArg :: NameArg :: Nil,
-+        resolve = c => c.ctx.addCategory(c.arg(IdArg), c.arg(NameArg))
-+      )
-+  ))
-+
-+  val ShopSchema = Schema(QueryType, Some(Mutation)) //define entry point
- 
-   def constantComplexity[Ctx](complexity: Double) =
-     Some((_: Ctx, _: Args, child: Double) ⇒ child + complexity)
-diff --git a/src/main/scala/ShopRepository.scala b/src/main/scala/ShopRepository.scala
-index d722845..d21ba89 100644
---- a/src/main/scala/ShopRepository.scala
-+++ b/src/main/scala/ShopRepository.scala
-@@ -41,6 +41,12 @@ class ShopRepository(db: Database) {
-           case (_, categories) ⇒ categories.map(_._1.productId) → categories.head._2
-         }
-       }
-+
-+  def addCategory(id: String, name: String): Future[Category] = {
++  def addCategory(id: CategoryId, name: String): Future[Category] = {
 +    val cat: Category = Category(id, name)
 +    db.run(Categories.insertOrUpdate(cat)).map(_ => cat)
 +  }
