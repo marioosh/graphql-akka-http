@@ -1,4 +1,4 @@
-import Models.{Category, Product, Taxonomy}
+import Models._
 import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -12,13 +12,13 @@ class ShopRepository(db: Database) {
 
   def allProducts = db.run(Products.result)
 
-  def products(ids: Seq[Int]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
+  def products(ids: Seq[ProductId]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
 
   def allCategories = db.run(Categories.result)
 
-  def categories(ids: Seq[String]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+  def categories(ids: Seq[CategoryId]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
 
-  def productsByCategories(categoriesIds: Seq[String]): Future[Seq[(Seq[String], Product)]] =
+  def productsByCategories(categoriesIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Product)]] =
     db.run(
       Taxonometry
         .filter(_.categoryId inSet categoriesIds)
@@ -30,7 +30,7 @@ class ShopRepository(db: Database) {
         }
       }
 
-  def categoriesByProducts(productsIds: Seq[Int]): Future[Seq[(Seq[Int], Category)]] =
+  def categoriesByProducts(productsIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Category)]] =
     db.run(
       Taxonometry
         .filter(_.productId inSet productsIds)
@@ -42,7 +42,7 @@ class ShopRepository(db: Database) {
         }
       }
 
-  def addCategory(id: String, name: String): Future[Category] = {
+  def addCategory(id: CategoryId, name: String): Future[Category] = {
     val cat: Category = Category(id, name)
     db.run(Categories.insertOrUpdate(cat)).map(_ => cat)
   }
@@ -52,7 +52,7 @@ class ShopRepository(db: Database) {
 object ShopRepository {
 
   class ProductTable(tag: Tag) extends Table[Product](tag, "PRODUCTS") {
-    def id = column[Int]("PRODUCT_ID", O.PrimaryKey)
+    def id = column[ProductId]("PRODUCT_ID", O.PrimaryKey)
 
     def name = column[String]("NAME")
 
@@ -66,7 +66,7 @@ object ShopRepository {
   val Products = TableQuery[ProductTable]
 
   class CategoryTable(tag: Tag) extends Table[Category](tag, "CATEGORY") {
-    def id = column[String]("CATEGORY_ID", O.PrimaryKey)
+    def id = column[CategoryId]("CATEGORY_ID", O.PrimaryKey)
 
     def name = column[String]("NAME")
 
@@ -80,9 +80,9 @@ object ShopRepository {
     * JOIN TABLE
     */
   class TaxonomyTable(tag: Tag) extends Table[Taxonomy](tag, "PRODUCT_CATEGORY") {
-    def productId = column[Int]("PRODUCT_ID")
+    def productId = column[ProductId]("PRODUCT_ID")
 
-    def categoryId = column[String]("CATEGORY_ID")
+    def categoryId = column[CategoryId]("CATEGORY_ID")
 
     //relations
     def product = foreignKey("PRODUCT_FK", productId, Products)(_.id)
@@ -108,20 +108,20 @@ object ShopRepository {
       Product(6, "Candle", "", BigDecimal(13.99))
     ),
     Categories ++= Seq(
-      Category("1", "Food"),
-      Category("2", "Magic ingredients"),
-      Category("3", "Home interior")
+      Category(1, "Food"),
+      Category(2, "Magic ingredients"),
+      Category(3, "Home interior")
     ),
     Taxonometry ++= Seq(
-      Taxonomy(1, "1"),
-      Taxonomy(2, "2"),
-      Taxonomy(3, "1"),
-      Taxonomy(4, "1"),
-      Taxonomy(4, "2"),
-      Taxonomy(5, "1"),
-      Taxonomy(5, "2"),
-      Taxonomy(6, "3"),
-      Taxonomy(6, "2")
+      Taxonomy(1, 1),
+      Taxonomy(2, 2),
+      Taxonomy(3, 1),
+      Taxonomy(4, 1),
+      Taxonomy(4, 2),
+      Taxonomy(5, 1),
+      Taxonomy(5, 2),
+      Taxonomy(6, 3),
+      Taxonomy(6, 2)
     )
   )
 

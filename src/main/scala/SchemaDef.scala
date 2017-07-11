@@ -7,11 +7,9 @@ object SchemaDef {
   import sangria.macros.derive._
 
   //category has relation to product
-  //category id's type is String
-  val product = Relation[Product, (Seq[String], Product), String]("product-category", _._1, _._2)
+  val product = Relation[Product, (Seq[CategoryId], Product), CategoryId]("product-category", _._1, _._2)
   //product has relation to category
-  //product id's type is Int
-  val category = Relation[Category, (Seq[Int], Category), Int]("category-product", _._1, _._2)
+  val category = Relation[Category, (Seq[ProductId], Category), ProductId]("category-product", _._1, _._2)
 
   val IdentifiableType = InterfaceType(
     "Identifiable",
@@ -52,13 +50,13 @@ object SchemaDef {
       )
     )
 
-  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[String], Product), Int] = Fetcher.relCaching(
-    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids),
+  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[ProductId], Product), ProductId] = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids),
     (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
   )
 
-  val categoriesFetcher: Fetcher[ShopRepository, Category, (Seq[Int], Category), String] = Fetcher.relCaching(
-    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids),
+  val categoriesFetcher: Fetcher[ShopRepository, Category, (Seq[CategoryId], Category), CategoryId] = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids),
     (repo: ShopRepository, ids: RelationIds[Category]) => repo.categoriesByProducts(ids(category))
   )
 
@@ -75,21 +73,21 @@ object SchemaDef {
       Field("product", OptionType(ProductType),
         description = Some("Returns a product with specific `id`."),
         arguments = Argument("id", IntType) :: Nil,
-        resolve = c => productsFetcher.defer(c.arg[Int]("id"))),
+        resolve = c => productsFetcher.defer(c.arg[ProductId]("id"))),
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
-        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
-        arguments = Argument("id", StringType) :: Nil,
-        resolve = c => categoriesFetcher.deferOpt(c.arg[String]("id"))),
+        arguments = Argument("id", IntType) :: Nil,
+        resolve = c => categoriesFetcher.deferOpt(c.arg[CategoryId]("id"))),
       Field("categories", ListType(CategoryType),
         description = Some("Returns categories by provided ids"),
-        arguments = Argument("ids", ListInputType(StringType)) :: Nil,
+        arguments = Argument("ids", ListInputType(IntType)) :: Nil,
         complexity = constantComplexity(30),
-        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[String]]("ids"))
+        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[CategoryId]]("ids"))
       ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),
@@ -99,7 +97,7 @@ object SchemaDef {
     )
   )
 
-  val IdArg = Argument("id", StringType)
+  val IdArg = Argument("id", IntType)
   val NameArg = Argument("name", StringType)
 
   val Mutation = ObjectType("Mutation", fields[ShopRepository, Unit](

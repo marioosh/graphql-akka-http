@@ -87,10 +87,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
 
     "returns tupled of products for provided categories" in {
 
-      repository.productsByCategories(Seq("2")) map {
+      repository.productsByCategories(Seq(2)) map {
         products =>
           assert(products.length == 4)
-          assert(products.contains((Seq("2"), Product(6, "Candle", "", BigDecimal(13.99)))))
+          assert(products.contains((Seq(2), Product(6, "Candle", "", BigDecimal(13.99)))))
       }
     }
 
