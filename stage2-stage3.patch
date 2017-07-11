@@ -1,0 +1,197 @@
+diff --git a/queries/stage3.graphql b/queries/stage3.graphql
+new file mode 100644
+index 0000000..fa8c7c3
+--- /dev/null
++++ b/queries/stage3.graphql
+@@ -0,0 +1,33 @@
++query stage3{
++
++    allProducts {
++        name
++        description
++        picture(size: 100){
++            url
++        }
++        categories {
++            name
++            products{
++                name
++            }
++        }
++    }
++
++    category(id: 2){
++        name
++        products{
++            name
++        }
++    }
++
++    product(id: 4){
++        name
++        categories {
++            name
++        }
++        picture(size:666){
++            url
++        }
++    }
++}
+diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
+index e774438..636b2e0 100644
+--- a/src/main/scala/SchemaDef.scala
++++ b/src/main/scala/SchemaDef.scala
+@@ -1,4 +1,4 @@
+-import sangria.execution.deferred.{DeferredResolver, Fetcher}
++import sangria.execution.deferred.{DeferredResolver, Fetcher, Relation, RelationIds}
+ import sangria.schema._
+ 
+ object SchemaDef {
+@@ -6,6 +6,13 @@ object SchemaDef {
+   import Models._
+   import sangria.macros.derive._
+ 
++  //category has relation to product
++  //category id's type is String
++  val product = Relation[Product, (Seq[CategoryId], Product), CategoryId]("product-category", _._1, _._2)
++  //product has relation to category
++  //product id's type is Int
++  val category = Relation[Category, (Seq[ProductId], Category), ProductId]("category-product", _._1, _._2)
++
+   val IdentifiableType = InterfaceType(
+     "Identifiable",
+     "Entity that can be identified",
+@@ -17,7 +24,11 @@ object SchemaDef {
+   implicit val ProductType: ObjectType[Unit, Product] =
+     deriveObjectType[Unit, Product](
+       Interfaces(IdentifiableType),
+-      IncludeMethods("picture") //by defaul macro cosinders fields only
++      IncludeMethods("picture"), //by defaul macro cosinders fields only
++      AddFields(
++        Field("categories", ListType(CategoryType),
++          resolve = c => categoriesFetcher.deferRelSeq(category, c.value.id))
++      )
+     )
+ 
+   implicit val PictureType: ObjectType[Unit, Picture] =
+@@ -32,19 +43,24 @@ object SchemaDef {
+ 
+   implicit val CategoryType: ObjectType[Unit, Category] =
+     deriveObjectType[Unit, Category](
+-      Interfaces(IdentifiableType),
+-      ObjectTypeDescription("The category of products")
++      ObjectTypeDescription("The category of products"),
++      AddFields(
++        Field("products", ListType(ProductType),
++          resolve = c => productsFetcher.deferRelSeq(product, c.value.id))
++      )
+     )
+ 
+-  val productFetcher = Fetcher(
+-    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids)
++  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[ProductId], Product), ProductId] = Fetcher.relCaching(
++    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids),
++    (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
+   )
+ 
+-  val categoriesFetcher = Fetcher(
+-    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids)
++  val categoriesFetcher: Fetcher[ShopRepository, Category, (Seq[CategoryId], Category), CategoryId] = Fetcher.relCaching(
++    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids),
++    (repo: ShopRepository, ids: RelationIds[Category]) => repo.categoriesByProducts(ids(category))
+   )
+ 
+-  val deferredResolver = DeferredResolver.fetchers(productFetcher, categoriesFetcher)
++  val deferredResolver = DeferredResolver.fetchers(productsFetcher, categoriesFetcher)
+ 
+   val QueryType = ObjectType(
+     "Query",
+@@ -56,11 +72,11 @@ object SchemaDef {
+       Field("product", OptionType(ProductType),
+         description = Some("Returns a product with specific `id`."),
+         arguments = Argument("id", IntType) :: Nil,
+-        resolve = c => productFetcher.defer(c.arg[ProductId]("id"))),
++        resolve = c => productsFetcher.defer(c.arg[ProductId]("id"))),
+       Field("products", ListType(ProductType),
+         description = Some("Returns a list of products for provided IDs."),
+         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
+-        resolve = c => productFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
++        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
+       ),
+       Field("category", OptionType(CategoryType),
+         description = Some("Returns a category with specific `id`."),
+diff --git a/src/main/scala/ShopRepository.scala b/src/main/scala/ShopRepository.scala
+index 8d4f335..23c552c 100644
+--- a/src/main/scala/ShopRepository.scala
++++ b/src/main/scala/ShopRepository.scala
+@@ -1,6 +1,7 @@
+ import Models._
+ import slick.jdbc.H2Profile.api._
+ 
++import scala.concurrent.ExecutionContext.Implicits.global
+ import scala.concurrent.duration._
+ import scala.concurrent.{Await, Future}
+ import scala.language.postfixOps
+@@ -17,6 +18,29 @@ class ShopRepository(db: Database) {
+ 
+   def categories(ids: Seq[CategoryId]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+ 
++  def productsByCategories(categoriesIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Product)]] =
++    db.run(
++      Taxonometry
++        .filter(_.categoryId inSet categoriesIds)
++        .join(Products).on(_.productId === _.id)
++        .result)
++      .map { result =>
++        result.groupBy(_._2.id).toVector.map {
++          case (_, products) ⇒ products.map(_._1.categoryId) → products.head._2
++        }
++      }
++
++  def categoriesByProducts(productsIds: Seq[CategoryId]): Future[Seq[(Seq[CategoryId], Category)]] =
++    db.run(
++      Taxonometry
++        .filter(_.productId inSet productsIds)
++        .join(Categories).on(_.categoryId === _.id)
++        .result)
++      .map { result =>
++        result.groupBy(_._2.id).toVector.map {
++          case (_, categories) ⇒ categories.map(_._1.productId) → categories.head._2
++        }
++      }
+ }
+ 
+ object ShopRepository {
+diff --git a/src/test/scala/ProductSpecs.scala b/src/test/scala/ProductSpecs.scala
+index 1f8f317..d1c011e 100644
+--- a/src/test/scala/ProductSpecs.scala
++++ b/src/test/scala/ProductSpecs.scala
+@@ -1,3 +1,4 @@
++import Models.Product
+ import SchemaDef._
+ import org.scalatest.{AsyncWordSpec, Matchers}
+ import sangria.execution.Executor
+@@ -76,6 +77,23 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
+ 
+     }
+ 
++    "returns categories for provided products ids" in {
++
++      repository.categoriesByProducts(Seq(6)) map {
++        categories =>
++          assert(categories.length == 2)
++      }
++    }
++
++    "returns tupled of products for provided categories" in {
++
++      repository.productsByCategories(Seq(2)) map {
++        products =>
++          assert(products.length == 4)
++          assert(products.contains((Seq(2), Product(6, "Candle", "", BigDecimal(13.99)))))
++      }
++    }
++
+   }
+ 
+ 
