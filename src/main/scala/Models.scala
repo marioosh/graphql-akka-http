@@ -17,13 +17,13 @@ object Models {
   }
 
   object Product {
-    implicit val hasId = HasId[Product, Int](_.id)
+    implicit val hasId = HasId[Product, ProductId](_.id)
   }
 
   case class Category(id: CategoryId, name: String) extends Identifiable
 
   object Category {
-    implicit val hasId = HasId[Category, Int](_.id)
+    implicit val hasId = HasId[Category, CategoryId](_.id)
   }
 
   case class Taxonomy(productId: ProductId, categoryId: CategoryId)
