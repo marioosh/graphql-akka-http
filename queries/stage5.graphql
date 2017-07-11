@@ -1,6 +1,6 @@
 mutation stage5{
 
-    addCategory(id: "foo", name: "FOO"){
+    addCategory(id: 5, name: "FOO"){
         id
         name
     }
