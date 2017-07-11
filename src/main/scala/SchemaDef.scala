@@ -50,8 +50,8 @@ object SchemaDef {
       )
     )
 
-  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[CategoryId], Product), Int] = Fetcher.relCaching(
-    (repo: ShopRepository, ids: Seq[Int]) => repo.products(ids),
+  val productsFetcher: Fetcher[ShopRepository, Product, (Seq[ProductId], Product), ProductId] = Fetcher.relCaching(
+    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids),
     (repo: ShopRepository, ids: RelationIds[Product]) => repo.productsByCategories(ids(product))
   )
 
@@ -72,20 +72,20 @@ object SchemaDef {
       Field("product", OptionType(ProductType),
         description = Some("Returns a product with specific `id`."),
         arguments = Argument("id", IntType) :: Nil,
-        resolve = c => productsFetcher.defer(c.arg[Int]("id"))),
+        resolve = c => productsFetcher.defer(c.arg[ProductId]("id"))),
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
-        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+        resolve = c => productsFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
         arguments = Argument("id", IntType) :: Nil,
-        resolve = c => categoriesFetcher.deferOpt(c.arg[Int]("id"))),
+        resolve = c => categoriesFetcher.deferOpt(c.arg[CategoryId]("id"))),
       Field("categories", ListType(CategoryType),
         description = Some("Returns categories by provided ids"),
         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
-        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
+        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[CategoryId]]("ids"))
       ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),
