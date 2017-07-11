@@ -1,0 +1,221 @@
+diff --git a/queries/stage2.graphql b/queries/stage2.graphql
+new file mode 100644
+index 0000000..57efeb2
+--- /dev/null
++++ b/queries/stage2.graphql
+@@ -0,0 +1,19 @@
++query stage2{
++
++    product(id: 1){
++        name
++    }
++
++    products(ids:[1,2]){
++        name
++        description
++    }
++
++    allCategories {
++        name
++    }
++
++    categories(ids: [2, 3, 4]){
++        name
++    }
++}
+diff --git a/src/main/scala/GraphQLServer.scala b/src/main/scala/GraphQLServer.scala
+index b1301ae..714005e 100644
+--- a/src/main/scala/GraphQLServer.scala
++++ b/src/main/scala/GraphQLServer.scala
+@@ -45,7 +45,8 @@ object GraphQLServer {
+       query,
+       repository,
+       variables = vars,
+-      operationName = op
++      operationName = op,
++      deferredResolver = SchemaDef.deferredResolver
+     ).map(OK -> _)
+       .recover {
+         case error: QueryAnalysisError => BadRequest -> error.resolveError
+diff --git a/src/main/scala/Models.scala b/src/main/scala/Models.scala
+index 440adb5..8ff5f68 100644
+--- a/src/main/scala/Models.scala
++++ b/src/main/scala/Models.scala
+@@ -1,4 +1,4 @@
+-
++import sangria.execution.deferred.HasId
+ 
+ object Models {
+ 
+@@ -16,8 +16,16 @@ object Models {
+       Picture(width = size, height = size, url = Some(s"http://fakeimg.pl/$size/?text=ID:%20$id"))
+   }
+ 
++  object Product {
++    implicit val hasId = HasId[Product, ProductId](_.id)
++  }
++
+   case class Category(id: CategoryId, name: String) extends Identifiable
+ 
++  object Category {
++    implicit val hasId = HasId[Category, CategoryId](_.id)
++  }
++
+   case class Taxonomy(productId: ProductId, categoryId: CategoryId)
+ 
+ }
+diff --git a/src/main/scala/PictureDefinition.scala b/src/main/scala/PictureDefinition.scala
+deleted file mode 100644
+index 2971139..0000000
+--- a/src/main/scala/PictureDefinition.scala
++++ /dev/null
+@@ -1,34 +0,0 @@
+-import sangria.schema._
+-
+-/**
+-  * File needed for presentation reasons only
+-  */
+-
+-object PictureDefinition {
+-
+-  case class Picture(width: Int, height: Int, url: Option[String])
+-
+-  val PictureType = ObjectType(
+-    "Picture",
+-    "The product picture",
+-    fields[Unit, Picture](
+-      Field("width", IntType, resolve = _.value.width),
+-      Field("height", IntType, resolve = _.value.height),
+-      Field("url", OptionType(StringType),
+-        description = Some("Picture CDN Url"),
+-        resolve = _.value.url)
+-    )
+-  )
+-
+-  object ForLazyDevelopers {
+-    import sangria.macros.derive._
+-
+-    val PictureType: ObjectType[Unit, Picture] =
+-      deriveObjectType[Unit, Picture](
+-        ObjectTypeDescription("The product picture"),
+-        DocumentField("url", "Picture CDN URL")
+-      )
+-
+-  }
+-
+-}
+diff --git a/src/main/scala/SchemaDef.scala b/src/main/scala/SchemaDef.scala
+index d02afb5..e774438 100644
+--- a/src/main/scala/SchemaDef.scala
++++ b/src/main/scala/SchemaDef.scala
+@@ -1,3 +1,4 @@
++import sangria.execution.deferred.{DeferredResolver, Fetcher}
+ import sangria.schema._
+ 
+ object SchemaDef {
+@@ -35,6 +36,16 @@ object SchemaDef {
+       ObjectTypeDescription("The category of products")
+     )
+ 
++  val productFetcher = Fetcher(
++    (repo: ShopRepository, ids: Seq[ProductId]) => repo.products(ids)
++  )
++
++  val categoriesFetcher = Fetcher(
++    (repo: ShopRepository, ids: Seq[CategoryId]) => repo.categories(ids)
++  )
++
++  val deferredResolver = DeferredResolver.fetchers(productFetcher, categoriesFetcher)
++
+   val QueryType = ObjectType(
+     "Query",
+     fields[ShopRepository, Unit](
+@@ -45,11 +56,24 @@ object SchemaDef {
+       Field("product", OptionType(ProductType),
+         description = Some("Returns a product with specific `id`."),
+         arguments = Argument("id", IntType) :: Nil,
+-        resolve = c => c.ctx.product(c.arg[ProductId]("id"))),
++        resolve = c => productFetcher.defer(c.arg[ProductId]("id"))),
+       Field("products", ListType(ProductType),
+         description = Some("Returns a list of products for provided IDs."),
+         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
+-        resolve = c => c.ctx.products(c.arg[List[ProductId]]("ids"))
++        resolve = c => productFetcher.deferSeqOpt(c.arg[List[ProductId]]("ids"))
++      ),
++      Field("category", OptionType(CategoryType),
++        description = Some("Returns a category with specific `id`."),
++        arguments = Argument("id", IntType) :: Nil,
++        resolve = c => categoriesFetcher.deferOpt(c.arg[CategoryId]("id"))),
++      Field("categories", ListType(CategoryType),
++        description = Some("Returns categories by provided ids"),
++        arguments = Argument("ids", ListInputType(IntType)) :: Nil,
++        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[CategoryId]]("ids"))
++      ),
++      Field("allCategories", ListType(CategoryType),
++        description = Some("Returns a list of all available categories."),
++        resolve = _.ctx.allCategories
+       )
+     )
+   )
+diff --git a/src/main/scala/ShopRepository.scala b/src/main/scala/ShopRepository.scala
+index 412f2c6..8d4f335 100644
+--- a/src/main/scala/ShopRepository.scala
++++ b/src/main/scala/ShopRepository.scala
+@@ -13,14 +13,10 @@ class ShopRepository(db: Database) {
+ 
+   def products(ids: Seq[ProductId]): Future[Seq[Product]] = db.run(Products.filter(_.id inSet ids).result)
+ 
+-  def product(id: ProductId): Future[Option[Product]] = db.run(Products.filter(_.id === id).result.headOption)
+-
+   def allCategories = db.run(Categories.result)
+ 
+   def categories(ids: Seq[CategoryId]): Future[Seq[Category]] = db.run(Categories.filter(_.id inSet ids).result)
+ 
+-  def category(id: CategoryId): Future[Option[Category]] = db.run(Categories.filter(_.id === id).result.headOption)
+-
+ }
+ 
+ object ShopRepository {
+diff --git a/src/test/scala/ProductSpecs.scala b/src/test/scala/ProductSpecs.scala
+index da291f9..1f8f317 100644
+--- a/src/test/scala/ProductSpecs.scala
++++ b/src/test/scala/ProductSpecs.scala
+@@ -8,6 +8,7 @@ import spray.json._
+ class ProductSpecs extends AsyncWordSpec with Matchers {
+ 
+   val repository = ShopRepository.createDatabase()
++  val resolver = SchemaDef.deferredResolver
+ 
+   "A Math" should {
+     "still works" in {
+@@ -34,6 +35,10 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
+             products(ids: [1,2]) {
+               name
+             }
++
++            allCategories {
++              name
++            }
+           }
+ 
+       """
+@@ -54,13 +59,18 @@ class ProductSpecs extends AsyncWordSpec with Matchers {
+           |    "products":[
+           |     {"name":"Cheescake"},
+           |     {"name":"Health Potion"}
++          |    ],
++          |    "allCategories":[
++          |     {"name":"Food"},
++          |     {"name":"Magic ingredients"},
++          |     {"name":"Home interior"}
+           |    ]
+           |  }
+           |}
+         """.stripMargin.parseJson
+ 
+ 
+-      Executor.execute(ShopSchema, query, repository) map {
++      Executor.execute(ShopSchema, query, repository, deferredResolver = resolver) map {
+         result => assert(result == response)
+       }
+ 

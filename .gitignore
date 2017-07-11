@@ -61,4 +61,3 @@ project/plugins/project/
 .lib/
 
 graphql.*.json
-*.patch
