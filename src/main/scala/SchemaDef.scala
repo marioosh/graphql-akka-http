@@ -45,11 +45,11 @@ object SchemaDef {
       Field("product", OptionType(ProductType),
         description = Some("Returns a product with specific `id`."),
         arguments = Argument("id", IntType) :: Nil,
-        resolve = c => c.ctx.product(c.arg[Int]("id"))),
+        resolve = c => c.ctx.product(c.arg[ProductId]("id"))),
       Field("products", ListType(ProductType),
         description = Some("Returns a list of products for provided IDs."),
         arguments = Argument("ids", ListInputType(IntType)) :: Nil,
-        resolve = c => c.ctx.products(c.arg[List[Int]]("ids"))
+        resolve = c => c.ctx.products(c.arg[List[ProductId]]("ids"))
       )
     )
   )
