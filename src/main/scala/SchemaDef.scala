@@ -32,6 +32,7 @@ object SchemaDef {
 
   implicit val CategoryType: ObjectType[Unit, Category] =
     deriveObjectType[Unit, Category](
+      Interfaces(IdentifiableType),
       ObjectTypeDescription("The category of products")
     )
 
@@ -40,7 +41,7 @@ object SchemaDef {
   )
 
   val categoriesFetcher = Fetcher(
-    (repo: ShopRepository, ids: Seq[String]) => repo.categories(ids)
+    (repo: ShopRepository, ids: Seq[Int]) => repo.categories(ids)
   )
 
   val deferredResolver = DeferredResolver.fetchers(productFetcher, categoriesFetcher)
@@ -63,12 +64,12 @@ object SchemaDef {
       ),
       Field("category", OptionType(CategoryType),
         description = Some("Returns a category with specific `id`."),
-        arguments = Argument("id", StringType) :: Nil,
-        resolve = c => categoriesFetcher.deferOpt(c.arg[String]("id"))),
+        arguments = Argument("id", IntType) :: Nil,
+        resolve = c => categoriesFetcher.deferOpt(c.arg[Int]("id"))),
       Field("categories", ListType(CategoryType),
         description = Some("Returns categories by provided ids"),
-        arguments = Argument("ids", ListInputType(StringType)) :: Nil,
-        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[String]]("ids"))
+        arguments = Argument("ids", ListInputType(IntType)) :: Nil,
+        resolve = c => categoriesFetcher.deferSeqOpt(c.arg[List[Int]]("ids"))
       ),
       Field("allCategories", ListType(CategoryType),
         description = Some("Returns a list of all available categories."),

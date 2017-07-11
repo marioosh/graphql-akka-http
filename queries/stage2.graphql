@@ -13,7 +13,7 @@ query stage2{
         name
     }
 
-    categories(ids: ["2", "3", "4"]){
+    categories(ids: [2, 3, 4]){
         name
     }
 }
